@@ -3,7 +3,7 @@ from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column,
 from flask import Flask, app, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
-from marshmallow import ValidationError
+from marshmallow import ValidationError, fields
 import os
 from typing import List
 from datetime import datetime
@@ -20,7 +20,7 @@ app = Flask(__name__)
 # MySQL database configuration
 # engine = create_engine(f'mysql+mysqlconnector://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}')
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://PASSWORD_HERE@localhost/ecommerce_api'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root:S3rv1ngU!!@localhost/ecommerce_api'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False 
 
 # Define a base class for other DB tables to inherit
@@ -103,6 +103,7 @@ users_schema = UserSchema(many=True)
 class OrderSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = Order
+    user_id=fields.Integer()
 
 order_schema = OrderSchema()
 orders_schema = OrderSchema(many=True)
