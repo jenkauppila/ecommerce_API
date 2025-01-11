@@ -23,9 +23,9 @@ app = Flask(__name__)
 # MySQL database configuration
 # engine = create_engine(f'mysql+mysqlconnector://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}')
 
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+# app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 
-# app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root:S3rv1ngU!!@localhost/ecommerce_api'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root:S3rv1ngU!!@localhost/ecommerce_api'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False 
 
 # Define a base class for other DB tables to inherit
@@ -46,12 +46,12 @@ order_product = Table(
 )
 
 #The association table between users and orders
-user_order = Table(
-	'user_order',
-	Base.metadata,
-	Column('user_id', Integer, ForeignKey('users.user_id', ondelete='CASCADE'), primary_key=True),
-	Column('order_id', Integer, ForeignKey('orders.order_id', ondelete='CASCADE'), primary_key=True)
-)
+# user_order = Table(
+# 	'user_order',
+# 	Base.metadata,
+# 	Column('user_id', Integer, ForeignKey('users.user_id', ondelete='CASCADE'), primary_key=True),
+# 	Column('order_id', Integer, ForeignKey('orders.order_id', ondelete='CASCADE'), primary_key=True)
+# )
 
 # MARK: - Models/Tables
     
@@ -100,7 +100,7 @@ class Order(Base):
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey('users.user_id'), nullable=False)
     
     # One-to-Many relationship - one Order to one User
-    user: Mapped[List['User']] = relationship('User', secondary=user_order, back_populates='orders')
+    user: Mapped[List['User']] = relationship('User', back_populates='orders')
     # old below:
     # user: Mapped['User'] = relationship('User', back_populates='orders')
 
@@ -192,6 +192,7 @@ class OrderSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = Order
     user_id=fields.Integer()
+    product_id=fields.Integer()
     # should product_id be here too??
 
 order_schema = OrderSchema()

@@ -93,7 +93,10 @@ def delete_user(id):
     user = db.session.get(User, id)
     if not user:
         return jsonify({"message": "Invalid user id"}), 400
-    
+    # order = db.session.get(User, user.orders)
+    # if order:
+    #     return jsonify({"message": "Cannot Delete -- User has open Orders"}), 500
+
     db.session.delete(user)
     db.session.commit()
     
@@ -151,11 +154,7 @@ def update_product(id):
         product_data = product_schema.load(request.json)
     except ValidationError as e:
         return jsonify(e.messages), 400
-    
-    existing_product = db.session.query(Product).filter_by(product_name=product_data['product_name']).first()
-    if existing_product:   
-        return jsonify({"message": "Duplicate product already exists"}), 409
-    
+        
     product.product_name = product_data["product_name"]
     product.price = product_data["price"]
     db.session.commit()
@@ -179,109 +178,20 @@ def delete_product(id):
 
 # Route to ADD new order
 @app.route('/orders', methods=['POST'])
-# @app.route('/users/<int:user_id>/create_order', methods=['POST'])
 def create_order():
-    order_data = request.json
-    user = db.session.get(User, order_data['user_id'])
-    # old below
-    # user = db.session.get(User, order_data['user_id'])
-    if not user:
-        return jsonify({"message": "Invalid User ID"}), 400
-    user.orders.append(order_data['user_id'])
-    # Order(user.id for user in  =order_data['user_id'])
-    # db.session.add(new_order)
+    try:
+        order_data = order_schema.load(request.json) # loads the JSON data with User schema
+    except ValidationError as e:
+        app.logger.error(e, exc_info=True)
+        if "title" in e.messages and e.messages["title"] == "400 Bad Request":
+            return jsonify({"message": "Invalid Entry"}), 400            
+        return jsonify(e.messages), 400 # returns error msg for 400 = Bad Request
+    
+    new_order = Order(user_id=order_data['user_id'])
+    db.session.add(new_order)
     db.session.commit()
-    return order_schema.jsonify(new_order), 200
+    return order_schema.jsonify(new_order), 201 # request created successfully
 
-    # try:
-    #     order_data = order_schema.load(request.json) # loads the JSON data with Order schema
-    # user_id = request.json
-    # user.orders.append(user)
-    # if user in user.user_id:
-        
-
-    # except ValidationError as e:
-    #     app.logger.error(e, exc_info=True)
-    #     if "title" in e.messages and e.messages["title"] == "400 Bad Request":
-    #         return jsonify({"message": "Invalid Entry"}), 400            
-    #     return jsonify(e.messages), 400 # returns error msg for 400 = Bad Request
-    
-
-# old version below:
-# @app.route('/orders', methods=['POST'])
-# def create_order():
-#     try:
-#         order_data = order_schema.load(request.json) # loads the JSON data with Order schema
-#     except ValidationError as e:
-#         app.logger.error(e, exc_info=True)
-#         if "title" in e.messages and e.messages["title"] == "400 Bad Request":
-#             return jsonify({"message": "Invalid Entry"}), 400            
-#         return jsonify(e.messages), 400 # returns error msg for 400 = Bad Request
-    
-#     new_order = Order(user_id=order_data['user_id'])
-#     db.session.add(new_order)
-#     user = db.session.get(User, order_data['user_id'])
-#     if not user:
-#         return jsonify({"message": "Invalid User ID"}), 400
-#     user.orders.append(new_order)
-#     db.session.commit()    
-#     return order_schema.jsonify(new_order), 200
-
-# previous below:
-# def create_order():
-#     try:
-#         order_data = order_schema.load(request.json) # loads the JSON data with Order schema
-#     except ValidationError as e:
-#         app.logger.error(e, exc_info=True)
-#         if "title" in e.messages and e.messages["title"] == "400 Bad Request":
-#             return jsonify({"message": "Invalid Entry"}), 400            
-#         return jsonify(e.messages), 400 # returns error msg for 400 = Bad Request
-    
-#     new_order = Order(user_id=order_data['user_id'])
-#     db.session.add(new_order)
-#     user = db.session.get(User, order_data['user_id'])
-#     if not user:
-#         return jsonify({"message": "Invalid User ID"}), 400
-#     user.orders.append(new_order)
-#     db.session.commit()    
-#     return order_schema.jsonify(new_order), 200
-
-    # try:
-    #     order_data = order_schema.load(request.json) # loads the JSON data with Order schema
-    
-    # except ValidationError as e:
-    #     app.logger.error(e, exc_info=True) # research app.logger
-    #     if "title" in e.messages and e.messages["title"] == "400 Bad Request":
-    #         return jsonify({"message": "Invalid Entry"}), 400            
-    #     return jsonify(e.messages), 400 # returns error msg for 400 = Bad Request
-    
-    # new_order = Order(user_id=order_data['user_id'])
-    # db.session.add(new_order)
-
-
-
-    # return order_schema.jsonify(new_order), 200
-
-# OG create_order:
-# @app.route('/orders', methods=['POST'])
-# def create_order():
-#     try:
-#         order_data = order_schema.load(request.json) # loads the JSON data with Order schema
-    
-#     except ValidationError as e:
-#         app.logger.error(e, exc_info=True) # research app.logger
-#         if "title" in e.messages and e.messages["title"] == "400 Bad Request":
-#             return jsonify({"message": "Invalid Entry"}), 400            
-#         return jsonify(e.messages), 400 # returns error msg for 400 = Bad Request
-    
-#     new_order = Order(user_id=order_data['user_id'])
-#     db.session.add(new_order)
-#     user = db.session.get(User, order_data['user_id'])
-#     if not user:
-#         return jsonify({"message": "Invalid User ID"}), 400
-#     user.orders.append(new_order)
-#     db.session.commit()    
-#     return order_schema.jsonify(new_order), 200
 
 # Route to ADD products to order
 @app.route('/orders/<int:order_id>/add_products', methods=['POST'])
@@ -295,7 +205,7 @@ def add_products(order_id):
         if not product:
             return jsonify({"message": f"Invalid Product ID: {id}"}), 400
         if product in order.products:
-            return jsonify({"message": f"{product.product_name} already on Order"}), 409
+            return jsonify({"message": f"Product already on Order"}), 409
         order.products.append(product)
     db.session.commit()
     return jsonify({"message": f"Products successfully added to Order: {order_id}!"}), 200
@@ -313,13 +223,12 @@ def remove_products(order_id):
         if not product:
             return jsonify({"message": f"Invalid Product ID: {id}"}), 400
         if product not in order.products:
-            return jsonify({"message": f"{product.product_name} not on Order: {order_id}"}), 409
+            return jsonify({"message": f"Product not on Order: {order_id}"}), 409
         order.products.remove(product)
     
     db.session.commit()
-    db.session.commit() # should this be here twice?
     
-    return jsonify({"message": f"Product successfully deleted from Order: {order_id}!"}), 200
+    return jsonify({"message": f"Products successfully deleted from Order: {order_id}!"}), 200
 
 
 # Route to GET all orders
@@ -327,6 +236,7 @@ def remove_products(order_id):
 def get_orders():
     query = select(Order)
     orders = db.session.execute(query).scalars().all()
+    
     if not orders:
             orders = db.session.execute(query).all()
             return jsonify({"message": "No orders found"}), 404
@@ -349,26 +259,39 @@ def get_order(id):
 @app.route('/orders/user/<int:id>', methods=['GET'])
 def get_user_orders(id):
     user = db.session.get(User, id)
+    
     if not user:
-        return jsonify({"message": f"Invalid User ID: {id}"}), 400
-        
-    order_ids = [order.id for order in user.orders]
-    if not order_ids:
-        return jsonify({"message": "No open orders exist for customer"}), 404
-    return jsonify({"user_id": user.id, "user_name": user.name, "order_ids": order_ids}), 200
+        return jsonify({"message": f"Invalid User ID: {id}"}), 400       
+    elif not user.orders:
+        return jsonify({"message": "No open orders exist for user"}), 404
+    
+    return orders_schema.jsonify(user.orders), 200
 
-# WRONG: Route to GET all Orders by User ID
-# @app.route('/orders/user/<int:id>', methods=['GET'])
-# def get_user_orders(id):
-#     user = db.session.get(User, id)
-#     if not user:
-#         return jsonify({"message": f"Invalid User ID: {id}"}), 400
-        
-#     order_ids = [order.order_id for order in user.orders]
-#     if not order_ids:
-#         return jsonify({"message": "No open orders exist for customer"}), 404
+# Route to GET all Products by Order ID
+@app.route('/products/order/<int:id>', methods=['GET'])
+# @app.route('/orders/<int:id>/get_order_products', methods=['GET'])
+def get_order_products(id):
+    order = db.session.get(Order, id)
+    
+    if not order:
+        return jsonify({"message": f"Invalid Order ID: {id}"}), 400       
+    elif not order.products:
+        return jsonify({"message": "No products on Order "}), 404
+    return orders_schema.jsonify(order.products), 200
+    
 
-#     return jsonify({"user_id": user.user_id, "user_name": user.name, "order_ids": order_ids}), 200
+# Route to DELETE an order (that has no products)
+@app.route('/orders/<int:id>', methods=['DELETE'])
+def delete_order(id):
+    order = db.session.get(Order, id)
+    if not order:
+        return jsonify({"message": "Invalid Order ID"}), 400
+    
+    db.session.delete(order)
+    db.session.commit()
+    
+    return jsonify({"message": f"Successfully deleted Order {order.order_id}"}), 200
+
 
 # Run the app
 app.run(debug=True)
